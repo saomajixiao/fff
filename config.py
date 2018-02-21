@@ -8,14 +8,14 @@ class Config:
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_RECORD_QUERIES = True
-    MAIL_SERVER = 'smtp.163.com'
+    MAIL_SERVER = 'smtp.sina.com'
     MAIL_PORT = 25
     MAIL_USE_TLS = True
     MAIL_USERNAME = os.environ.get('MAIL_USERNAME')
     MAIL_PASSWORD = os.environ.get('MAIL_PASSWORD')
     FLASKY_MAIL_SUBJECT_PREFIX = '[ZTQBLOG]'
-    FLASKY_MAIL_SENDER = 'prnedved@163.com'
-    FLASKY_ADMIN = 'prnedved@163.com'
+    FLASKY_MAIL_SENDER = 'prnedved@sina.com'
+    FLASKY_ADMIN = 'prnedved@sina.com'
     FLASKY_POSTS_PER_PAGE = 20
     FLASKY_FOLLOWERS_PER_PAGE = 50
     FLASKY_COMMENTS_PER_PAGE = 30
