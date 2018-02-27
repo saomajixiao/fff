@@ -262,6 +262,15 @@ class User(UserMixin, db.Model):
         return self.collections.filter_by(
             post_id=post.id).first() is not None
 
+    def delete_post(self, post):
+        p = self.posts.filter_by(id=post.id).first()
+        if p:
+            db.session.delete(p)
+
+    def delete_comment(self, comment):
+        c = self.comments.filter_by(id=comment.id).first()
+        if c:
+            db.session.delete(c)
 
     @property
     def followed_posts(self):

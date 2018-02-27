@@ -43,6 +43,16 @@
                     </a>
                     {% endif %}
                 {% endif %}
+                {% if current_user == post.author %}
+                <a href="{{ url_for('.delete_post', id=post.id) }}">
+                    <span class="label label-danger">删除</span>
+                </a>
+                {% elif current_user.is_administrator() %}
+                <a href="{{ url_for('.delete_post', id=post.id) }}">
+                    <span class="label label-danger">删除 [管理员]</span>
+                </a>
+                {% endif %}
+
             </div>
         </div>
     </li>

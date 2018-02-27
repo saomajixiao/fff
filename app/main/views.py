@@ -167,6 +167,36 @@ def edit(id):
     return render_template('edit_post.html', form=form)
 
 
+@main.route('/delete_post/<int:id>')
+@login_required
+def delete_post(id):
+    post = Post.query.get_or_404(id)
+    if current_user != post.author and \
+            not current_user.can(Permission.ADMINISTER):
+        abort(403)
+    current_user.delete_post(post)
+    flash(u'你删除了一篇文章')
+    if session.get('current_url'):
+        return redirect(session.get('current_url'))
+    else:
+        return redirect(url_for('.user', username=current_user.username))
+
+
+@main.route('/delete_comment/<int:id>')
+@login_required
+def delete_comment(id):
+    comment = Comment.query.get_or_404(id)
+    if current_user != comment.author and \
+            not current_user.can(Permission.ADMINISTER):
+        abort(403)
+    current_user.delete_comment(comment)
+    flash(u'你删除了一条评论')
+    if session.get('current_url'):
+        return redirect(session.get('current_url'))
+    else:
+        return redirect(url_for('.post', id=comment.post_id))
+
+
 @main.route('/follow/<username>')
 @login_required
 @permission_required(Permission.FOLLOWCOLLECT)

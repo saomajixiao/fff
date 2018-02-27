@@ -21,6 +21,7 @@
                     {% endif %}
                 {% endif %}
             </div>
+            <div class="post-footer">
             {% if moderate %}
                 <br>
                 {% if comment.disabled %}
@@ -28,7 +29,16 @@
                 {% else %}
                 <a class="btn btn-danger btn-xs" href="{{ url_for('.moderate_disable', id=comment.id, page=page) }}">禁止显示</a>
                 {% endif %}
+            {% elif current_user == comment.author %}
+                <a href="{{ url_for('.delete_comment', id=comment.id) }}">
+                    <span class="label label-danger">删除</span>
+                </a>
+            {% elif current_user.is_administrator() %}
+                <a href="{{ url_for('.delete_comment', id=comment.id) }}">
+                    <span class="label label-danger">删除 [管理员]</span>
+                </a>
             {% endif %}
+            </div>
         </div>
     </li>
     {% endfor %}
