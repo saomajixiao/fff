@@ -139,6 +139,7 @@ def post(id):
         return redirect(url_for('.post', id=post.id))
     page = request.args.get('page', 1, type=int)
     session['current_url'] = request.url
+    session['current_path'] = request.path
     pagination = post.comments.order_by(Comment.timestamp.asc()).paginate(
         page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
         error_out=False)
@@ -173,7 +174,7 @@ def delete_post(id):
         abort(403)
     current_user.delete_post(post)
     flash(u'你删除了一篇文章')
-    if session.get('current_url'):
+    if session.get('current_url') and (session.get('current_path') != ('/post/%d' % id)):
         return redirect(session.get('current_url'))
     else:
         return redirect(url_for('.user', username=current_user.username))

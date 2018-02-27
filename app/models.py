@@ -265,6 +265,8 @@ class User(UserMixin, db.Model):
     def delete_post(self, post):
         p = self.posts.filter_by(id=post.id).first()
         if p:
+            for comment in p.comments.all():
+                db.session.delete(comment)
             db.session.delete(p)
 
     def delete_comment(self, comment):
