@@ -21,9 +21,15 @@
         {% endif %}
         {% if user.about_me %}<p>{{ user.about_me }}</p>{% endif %}
         <p>注册于 {{ moment(user.member_since).format('L') }}. 最后活跃时间 {{ moment(user.last_seen).fromNow() }}.</p>
-        <p>{{ user.posts.count() }} 篇文章. {{ user.comments.count() }} 条评论.</p>
+        {% if user == current_user %}
+        <p>你发表了 {{ user.posts.count() }} 篇文章和 {{ user.comments.count() }} 条评论.</p>
+        <p>你收藏了 {{ user.collections.count() }} 篇文章, 你的文章被 {{ collection_times }} 次收藏.</p>
+        {% else %}
+        <p>{{ user.posts.count() }} 篇文章, {{ user.comments.count() }} 条评论.</p>
+        <p>文章被 {{ collection_times }} 次收藏.</p>
+        {% endif %}
         <p>
-            {% if current_user.can(Permission.FOLLOW) and user != current_user %}
+            {% if current_user.can(Permission.FOLLOWCOLLECT) and user != current_user %}
                 {% if not current_user.is_following(user) %}
                 <a href="{{ url_for('.follow', username=user.username) }}" class="btn btn-primary">关注</a>
                 {% else %}
@@ -46,8 +52,15 @@
         </p>
     </div>
 </div>
-<h3>{{ user.username }}的文章</h3>
-{% include '_posts.html' %}
+<div class="post-tabs">
+    <ul class="nav nav-tabs">
+        <li{% if not show_collection %} class="active"{% endif %}><a href="{{ url_for('.user', username=user.username) }}">{{ user.username }}的文章</a></li>
+        {% if user == current_user %}
+        <li{% if show_collection %} class="active"{% endif %}><a href="{{ url_for('.user', username=user.username, show_collection=1) }}">{{ user.username }}收藏的文章</a></li>
+        {% endif %}
+    </ul>
+    {% include '_posts.html' %}
+</div>
 {% if pagination %}
 <div class="pagination">
     {{ macros.pagination_widget(pagination, '.user', username=user.username) }}

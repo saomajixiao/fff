@@ -1,14 +1,14 @@
 # -*- coding: UTF-8 -*-
 
 from flask import render_template, redirect, url_for, abort, flash, request,\
-    current_app, make_response
+    current_app, make_response, session
 from flask_login import login_required, current_user
 from flask_sqlalchemy import get_debug_queries
 from . import main
 from .forms import EditProfileForm, EditProfileAdminForm, PostForm,\
     CommentForm
 from .. import db
-from ..models import Permission, Role, User, Post, Comment
+from ..models import Permission, Role, User, Post, Comment, Collect
 from ..decorators import admin_required, permission_required
 
 
@@ -44,6 +44,7 @@ def index():
         db.session.add(post)
         return redirect(url_for('.index'))
     page = request.args.get('page', 1, type=int)
+    session['current_url'] = request.url
     show_followed = False
     if current_user.is_authenticated:
         show_followed = bool(request.cookies.get('show_followed', ''))
@@ -63,12 +64,22 @@ def index():
 def user(username):
     user = User.query.filter_by(username=username).first_or_404()
     page = request.args.get('page', 1, type=int)
-    pagination = user.posts.order_by(Post.timestamp.desc()).paginate(
-        page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
-        error_out=False)
-    posts = pagination.items
-    return render_template('user.html', user=user, posts=posts,
-                           pagination=pagination)
+    session['current_url'] = request.url
+    collection_times = sum(post.collectors.count() for post in user.posts.all())
+    if not request.args.get('show_collection'):
+        pagination = user.posts.order_by(Post.timestamp.desc()).paginate(
+            page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+            error_out=False)
+        posts = pagination.items
+        return render_template('user.html', user=user, posts=posts,
+                            pagination=pagination, collection_times=collection_times)
+    else:
+        pagination = user.collections.order_by(Collect.timestamp.desc()).paginate(
+            page, per_page=current_app.config['FLASKY_POSTS_PER_PAGE'],
+            error_out=False)
+        posts = [item.post for item in pagination.items]
+        return render_template('user.html', user=user, posts=posts,
+                pagination=pagination, collection_times=collection_times,show_collection=True)
 
 
 @main.route('/edit-profile', methods=['GET', 'POST'])
@@ -127,6 +138,7 @@ def post(id):
         flash(u'你的评论已提交.')
         return redirect(url_for('.post', id=post.id, page=-1))
     page = request.args.get('page', 1, type=int)
+    session['current_url'] = request.url
     if page == -1:
         page = (post.comments.count() - 1) // \
             current_app.config['FLASKY_COMMENTS_PER_PAGE'] + 1
@@ -157,7 +169,7 @@ def edit(id):
 
 @main.route('/follow/<username>')
 @login_required
-@permission_required(Permission.FOLLOW)
+@permission_required(Permission.FOLLOWCOLLECT)
 def follow(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
@@ -173,7 +185,7 @@ def follow(username):
 
 @main.route('/unfollow/<username>')
 @login_required
-@permission_required(Permission.FOLLOW)
+@permission_required(Permission.FOLLOWCOLLECT)
 def unfollow(username):
     user = User.query.filter_by(username=username).first()
     if user is None:
@@ -199,7 +211,7 @@ def followers(username):
         error_out=False)
     follows = [{'user': item.follower, 'timestamp': item.timestamp}
                for item in pagination.items]
-    return render_template('followers.html', user=user, title="Followers of",
+    return render_template('followers.html', user=user, title=u"的粉丝",
                            endpoint='.followers', pagination=pagination,
                            follows=follows)
 
@@ -216,9 +228,53 @@ def followed_by(username):
         error_out=False)
     follows = [{'user': item.followed, 'timestamp': item.timestamp}
                for item in pagination.items]
-    return render_template('followers.html', user=user, title="Followed by",
+    return render_template('followers.html', user=user, title=u"的关注",
                            endpoint='.followed_by', pagination=pagination,
                            follows=follows)
+
+
+@main.route('/collect/<int:id>')
+@login_required
+@permission_required(Permission.FOLLOWCOLLECT)
+def collect(id):
+    post = Post.query.filter_by(id=id).first()
+    if post is None:
+        flash(u'无效文章.')
+        if session.get('current_url'):
+            return redirect(session.get('current_url'))
+        else:
+            return redirect(url_for('.index'))
+    elif current_user.is_collecting(post):
+        flash(u'你已收藏此文章.')
+    else:
+        current_user.collect(post)
+        flash(u'你收藏了 %s 的一篇文章.' % post.author.username)
+    if session.get('current_url'):
+        return redirect(session.get('current_url'))
+    else:
+        return redirect(url_for('.post', id=id))
+
+
+@main.route('/uncollect/<int:id>')
+@login_required
+@permission_required(Permission.FOLLOWCOLLECT)
+def uncollect(id):
+    post = Post.query.filter_by(id=id).first()
+    if post is None:
+        flash(u'无效文章.')
+        if session.get('current_url'):
+            return redirect(session.get('current_url'))
+        else:
+            return redirect(url_for('.index'))
+    elif not current_user.is_collecting(post):
+        flash(u'你没有收藏此文章.')
+    else:
+        current_user.uncollect(post)
+        flash(u'你取消了对 %s 的一篇文章的收藏.' % post.author.username)
+    if session.get('current_url'):
+        return redirect(session.get('current_url'))
+    else:
+        return redirect(url_for('.post', id=id))
 
 
 @main.route('/all')

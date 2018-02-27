@@ -11,7 +11,7 @@ from . import db, login_manager
 
 
 class Permission:
-    FOLLOW = 0x01
+    FOLLOWCOLLECT = 0x01
     COMMENT = 0x02
     WRITE_ARTICLES = 0x04
     MODERATE_COMMENTS = 0x08
@@ -29,10 +29,10 @@ class Role(db.Model):
     @staticmethod
     def insert_roles():
         roles = {
-            'User': (Permission.FOLLOW |
+            'User': (Permission.FOLLOWCOLLECT |
                      Permission.COMMENT |
                      Permission.WRITE_ARTICLES, True),
-            'Moderator': (Permission.FOLLOW |
+            'Moderator': (Permission.FOLLOWCOLLECT |
                           Permission.COMMENT |
                           Permission.WRITE_ARTICLES |
                           Permission.MODERATE_COMMENTS, False),
@@ -60,6 +60,15 @@ class Follow(db.Model):
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 
+class Collect(db.Model):
+    __tablename__ = 'collections'
+    collector_id = db.Column(db.Integer, db.ForeignKey('users.id'),
+                            primary_key=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'),
+                            primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -83,6 +92,11 @@ class User(UserMixin, db.Model):
     followers = db.relationship('Follow',
                                 foreign_keys=[Follow.followed_id],
                                 backref=db.backref('followed', lazy='joined'),
+                                lazy='dynamic',
+                                cascade='all, delete-orphan')
+    collections = db.relationship('Collect',
+                                foreign_keys=[Collect.collector_id],
+                                backref=db.backref('collector', lazy='joined'),
                                 lazy='dynamic',
                                 cascade='all, delete-orphan')
     comments = db.relationship('Comment', backref='author', lazy='dynamic')
@@ -234,6 +248,21 @@ class User(UserMixin, db.Model):
         return self.followers.filter_by(
             follower_id=user.id).first() is not None
 
+    def collect(self, post):
+        if not self.is_collecting(post):
+            c = Collect(collector=self, post=post)
+            db.session.add(c)
+
+    def uncollect(self, post):
+        c = self.collections.filter_by(post_id=post.id).first()
+        if c:
+            db.session.delete(c)
+
+    def is_collecting(self, post):
+        return self.collections.filter_by(
+            post_id=post.id).first() is not None
+
+
     @property
     def followed_posts(self):
         return Post.query.join(Follow, Follow.followed_id == Post.author_id)\
@@ -293,6 +322,11 @@ class Post(db.Model):
     timestamp = db.Column(db.DateTime, index=True, default=datetime.utcnow)
     author_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     comments = db.relationship('Comment', backref='post', lazy='dynamic')
+    collectors = db.relationship('Collect',
+                                foreign_keys=[Collect.post_id],
+                                backref=db.backref('post', lazy='joined'),
+                                lazy='dynamic',
+                                cascade='all, delete-orphan')
 
     @staticmethod
     def generate_fake(count=100):

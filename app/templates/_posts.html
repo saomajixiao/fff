@@ -27,11 +27,22 @@
                 </a>
                 {% endif %}
                 <a href="{{ url_for('.post', id=post.id) }}">
-                    <span class="label label-default">文章链接</span>
+                    <span class="label label-primary">文章链接</span>
                 </a>
                 <a href="{{ url_for('.post', id=post.id) }}#comments">
                     <span class="label label-primary">{{ post.comments.count() }} 评论</span>
                 </a>
+                {% if current_user.can(Permission.FOLLOWCOLLECT) %}
+                    {% if current_user.is_collecting(post) %}
+                    <a href="{{ url_for('.uncollect', id=post.id) }}">
+                        <span class="label label-primary">已收藏</span>
+                    </a>
+                    {% else %}
+                    <a href="{{ url_for('.collect', id=post.id) }}">
+                        <span class="label label-primary">收藏</span>
+                    </a>
+                    {% endif %}
+                {% endif %}
             </div>
         </div>
     </li>
