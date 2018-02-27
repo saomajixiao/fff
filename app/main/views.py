@@ -136,12 +136,9 @@ def post(id):
                           author=current_user._get_current_object())
         db.session.add(comment)
         flash(u'你的评论已提交.')
-        return redirect(url_for('.post', id=post.id, page=-1))
+        return redirect(url_for('.post', id=post.id))
     page = request.args.get('page', 1, type=int)
     session['current_url'] = request.url
-    if page == -1:
-        page = (post.comments.count() - 1) // \
-            current_app.config['FLASKY_COMMENTS_PER_PAGE'] + 1
     pagination = post.comments.order_by(Comment.timestamp.asc()).paginate(
         page, per_page=current_app.config['FLASKY_COMMENTS_PER_PAGE'],
         error_out=False)
